@@ -491,6 +491,7 @@ export default function App() {
     try {
       if (!auth) throw new Error('Ambiente sem Auth externo');
       const provider = new GoogleAuthProvider();
+      // Força o Google a mostrar a tela de escolha de conta
       provider.setCustomParameters({ prompt: 'select_account' });
 
       const result = await signInWithPopup(auth, provider);
@@ -498,70 +499,57 @@ export default function App() {
 
       if (gUser && gUser.email) {
         const emailLower = gUser.email.toLowerCase();
-        const isDocente =
-          emailLower.endsWith('@ufabc.edu.br') &&
-          !emailLower.includes('@aluno.');
-        const isInstitucional =
-          emailLower.endsWith('@aluno.ufabc.edu.br') ||
-          emailLower.endsWith('@ufabc.edu.br');
+        const isAluno = emailLower.endsWith('@aluno.ufabc.edu.br');
+        const isDocente = emailLower.endsWith('@ufabc.edu.br') && !isAluno;
+
+        // BLOQUEIO ESTRITO: Se não for @aluno.ufabc.edu.br nem @ufabc.edu.br, desloga na hora!
+        if (!isAluno && !isDocente) {
+          await signOut(auth);
+          setLoginError(
+            'Acesso restrito! Use exclusivamente seu e-mail institucional (@aluno.ufabc.edu.br ou @ufabc.edu.br).'
+          );
+          setIsAuthenticatingGoogle(false);
+          return;
+        }
 
         const profile = {
           name: gUser.displayName || emailLower.split('@')[0],
           email: emailLower,
           photoURL: gUser.photoURL || null,
-          role: isDocente ? 'Docente' : loginRole,
+          role: isDocente ? 'Docente' : 'Aluno(a)',
           ra: loginRa || '11202130452',
           googleVerified: true,
-          institutionalVerified: isInstitucional,
+          institutionalVerified: true,
           enrolledCodes: ['ESZI025', 'ESTU012', 'BC0404']
         };
 
         setLoggedUser(profile);
-        localStorage.setItem(
-          'ufabclima_google_user',
-          JSON.stringify(profile)
-        );
+        localStorage.setItem('ufabclima_google_user', JSON.stringify(profile));
         setShowLoginModal(false);
         setActiveTab('classes');
       }
     } catch (error) {
+      // Fallback para teste rápido no editor antes do domínio estar no ar
       const cleanEmail = loginEmail.trim().toLowerCase();
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const isAluno = cleanEmail.endsWith('@aluno.ufabc.edu.br');
+      const isDocente = cleanEmail.endsWith('@ufabc.edu.br') && !isAluno;
 
-      if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+      if (!isAluno && !isDocente) {
         setLoginError(
-          'Para testar neste preview (ou antes de liberar o domínio no Firebase), digite seu e-mail @aluno.ufabc.edu.br, @ufabc.edu.br ou @gmail.com abaixo e toque novamente.'
+          'Acesso negado. Digite apenas e-mails institucionais (@aluno.ufabc.edu.br para discentes ou @ufabc.edu.br para docentes).'
         );
         setIsAuthenticatingGoogle(false);
         return;
       }
-
-      const isAllowedDomain =
-        cleanEmail.endsWith('@aluno.ufabc.edu.br') ||
-        cleanEmail.endsWith('@ufabc.edu.br');
-
-      if (!isAllowedDomain) {
-        setLoginError(
-          'Use uma conta Google válida (@aluno.ufabc.edu.br, @ufabc.edu.br).'
-        );
-        setIsAuthenticatingGoogle(false);
-        return;
-      }
-
-      const isDocente =
-        cleanEmail.endsWith('@ufabc.edu.br') &&
-        !cleanEmail.includes('@aluno.');
 
       const profile = {
         name: loginName.trim() || cleanEmail.split('@')[0],
         email: cleanEmail,
         photoURL: null,
-        role: isDocente ? 'Docente' : loginRole,
+        role: isDocente ? 'Docente' : 'Aluno(a)',
         ra: loginRa || '11202130452',
         googleVerified: true,
-        institutionalVerified:
-          cleanEmail.endsWith('@aluno.ufabc.edu.br') ||
-          cleanEmail.endsWith('@ufabc.edu.br'),
+        institutionalVerified: true,
         enrolledCodes: ['ESZI025', 'ESTU012', 'BC0404']
       };
 
