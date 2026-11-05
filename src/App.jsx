@@ -538,12 +538,11 @@ export default function App() {
 
       const isAllowedDomain =
         cleanEmail.endsWith('@aluno.ufabc.edu.br') ||
-        cleanEmail.endsWith('@ufabc.edu.br') ||
-        cleanEmail.endsWith('@gmail.com');
+        cleanEmail.endsWith('@ufabc.edu.br');
 
       if (!isAllowedDomain) {
         setLoginError(
-          'Use uma conta Google válida (@aluno.ufabc.edu.br, @ufabc.edu.br ou @gmail.com).'
+          'Use uma conta Google válida (@aluno.ufabc.edu.br, @ufabc.edu.br).'
         );
         setIsAuthenticatingGoogle(false);
         return;
